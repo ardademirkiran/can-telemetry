@@ -1,0 +1,18 @@
+#pragma once
+#include "OBDLiveDataRequest.hpp"
+#include <cstdlib>
+
+class OBDEngineLoadRequest : public OBDLiveDataRequest
+{
+public:
+    u_int8_t pid() const override { return 0x04; }
+    std::string key() const override { return "engineLoad"; }
+
+    double parseResponse(const uint8_t *data, size_t length) const override
+    {
+        if (length < 3)
+            return -1.0;
+        int A = data[3];
+        return (A * 100) / 255;
+    }
+};
