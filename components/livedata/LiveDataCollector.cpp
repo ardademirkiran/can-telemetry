@@ -9,14 +9,13 @@
 #include "OBDMassAirFlowRequest.hpp"
 #include <map>
 #include <string>
-#include "Snapshot.hpp"
 #include "OBDResponse.hpp"
+#include "esp_http_client.h"
+#include "cbor.h"
+#include <string.h>
+#include "CBORUtils.hpp"
 
 static constexpr const char *TAG = "LIVE_DATA_COLLECTOR";
-
-Snapshot snap;
-
-std::vector<Snapshot> snapshotList;
 
 void LiveDataCollector::mapPrinterTask(void *pv)
 {
@@ -26,6 +25,60 @@ void LiveDataCollector::mapPrinterTask(void *pv)
         ESP_LOGI("SNAPSHOT", "%s, snapshotList: Size: %d", snap.toJson().c_str(), snapshotList.size());
     }
     vTaskDelete(nullptr);
+}
+
+void LiveDataCollector::sendBulkSnapshots(void *pv)
+{
+    while (status_ == CollectorStatus::RUNNING)
+    {
+        vTaskDelay(pdMS_TO_TICKS(30000));
+
+        if (snapshotList.empty())
+        {
+            continue;
+        }
+
+        // Allocate CBOR buffer
+        size_t cborSize = 0;
+
+        // Build CBOR data
+        cborUtils_.build_cbor_payload(snapshotList, HTTPCBORBuffer, sizeof(HTTPCBORBuffer), &cborSize);
+
+        ESP_LOGI("CBOR", "CBOR size: %d bytes", cborSize);
+
+        // Send request
+        esp_http_client_config_t config = {
+            .url = "http://192.168.0.19:8080/telemetry/ingest",
+        };
+
+        esp_http_client_handle_t client = esp_http_client_init(&config);
+        esp_http_client_set_method(client, HTTP_METHOD_POST);
+        esp_http_client_set_header(client, "Content-Type", "application/cbor");
+        esp_http_client_set_post_field(client,
+                                       (char *)HTTPCBORBuffer,
+                                       cborSize);
+
+        esp_err_t err = esp_http_client_perform(client);
+
+        if (err == ESP_OK)
+        {
+            ESP_LOGI("BULK", "Upload OK, HTTP %d",
+                     esp_http_client_get_status_code(client));
+            snapshotList.clear();
+        }
+        else
+        {
+            ESP_LOGE("BULK", "Upload failed: %s",
+                     esp_err_to_name(err));
+            size_t sdCborLen = 0;
+
+            cborUtils_.convertCollectedDataIntoCBOR(snapshotList, SDCBORBuffer, sizeof(SDCBORBuffer), &sdCborLen);
+            sdCardInterface_.append_cbor_to_sd(SDCBORBuffer, sdCborLen);
+            snapshotList.clear();
+        }
+
+        esp_http_client_cleanup(client);
+    }
 }
 
 LiveDataCollector::LiveDataCollector(CANClient *canClient)
@@ -39,6 +92,9 @@ void LiveDataCollector::saveSnapshot()
 {
     while (status_ == CollectorStatus::RUNNING)
     {
+        uint32_t ticks = xTaskGetTickCount();
+        uint64_t elapsed_ms = (uint64_t)ticks * portTICK_PERIOD_MS;
+        snap.setField("timestamp", elapsed_ms);
         ESP_LOGI(TAG, "Saving Snapshot.");
         snapshotList.push_back(snap);
         vTaskDelay(pdMS_TO_TICKS(1000));
@@ -85,8 +141,8 @@ void LiveDataCollector::stop()
     vTaskSuspend(snapshotSaverHandle_);
     vTaskSuspend(mapPrinterHandle_);
 
-    // ESP_LOGI(TAG, "Suspending dataSenderHandle_ = %p", dataSenderHandle_);
-    //  vTaskSuspend(dataSenderHandle_);
+    ESP_LOGI(TAG, "Suspending dataSenderHandle_ = %p", dataSenderHandle_);
+    vTaskSuspend(dataSenderHandle_);
 
     status_ = CollectorStatus::SUSPENDED;
 }
@@ -99,7 +155,7 @@ void LiveDataCollector::resume()
     vTaskResume(collectorHandle_);
     vTaskResume(snapshotSaverHandle_);
     vTaskResume(mapPrinterHandle_);
-    // vTaskResume(dataSenderHandle_);
+    vTaskResume(dataSenderHandle_);
 }
 
 void LiveDataCollector::kill()
@@ -108,7 +164,7 @@ void LiveDataCollector::kill()
     vTaskDelete(collectorHandle_);
     vTaskDelete(snapshotSaverHandle_);
     vTaskDelete(mapPrinterHandle_);
-    // vTaskDelete(dataSenderHandle_);
+    vTaskDelete(dataSenderHandle_);
     requestQueue_.clear();
     snapshotList.clear();
     snap = Snapshot();
@@ -152,6 +208,8 @@ void LiveDataCollector::start()
     {
         status_ = CollectorStatus::RUNNING;
         healthy_ = true;
+        sdCardInterface_.init_sdcard();
+
         xTaskCreate([](void *pv)
                     { static_cast<LiveDataCollector *>(pv)->collectData(); }, "scheduler_task", 4096, this, 5, &collectorHandle_);
 
@@ -162,6 +220,14 @@ void LiveDataCollector::start()
                     this,
                     3,
                     &mapPrinterHandle_);
+
+        xTaskCreate([](void *pv)
+                    { static_cast<LiveDataCollector *>(pv)->sendBulkSnapshots(pv); },
+                    "bulk_send",
+                    4096,
+                    this,
+                    3,
+                    &dataSenderHandle_);
 
         xTaskCreate([](void *pv)
                     { static_cast<LiveDataCollector *>(pv)->saveSnapshot(); }, "save_snapshot_task", 4096, this, 4, &snapshotSaverHandle_);

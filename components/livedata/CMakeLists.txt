@@ -4,4 +4,4 @@ idf_component_register(
         LiveDataCollector.cpp
     INCLUDE_DIRS
         "."
-    REQUIRES obdlivedatarequest can_client)
+    REQUIRES obdlivedatarequest can_client esp_http_client cbor cbor_utils globals)

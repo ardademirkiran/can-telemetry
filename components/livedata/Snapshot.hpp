@@ -1,3 +1,4 @@
+#pragma once
 #include <cstdint>
 #include <string>
 #include <sstream>
@@ -25,6 +26,10 @@ public:
 
     void setField(const std::string &key, double value)
     {
+        if (key == "timestamp")
+        {
+            timestamp = value;
+        }
         if (key == "rpm")
         {
             rpm = value;

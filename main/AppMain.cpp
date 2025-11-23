@@ -8,6 +8,7 @@
 #include "LiveDataCollectorMonitor.hpp"
 #include "CANTrafficMonitor.hpp"
 #include "WifiManager.hpp"
+#include "SDCardInterface.hpp"
 
 #include <sstream>
 
@@ -16,7 +17,7 @@ static constexpr const char *MAIN_TAG = "MAIN";
 extern "C" void app_main()
 {
 
-    /*WiFiManager wifi("arda", "arda2001");
+    WiFiManager wifi("NEZIH_DEMIRKIRAN_2.4G", "enesyamanbaba");
     wifi.init();
 
     if (wifi.connect())
@@ -26,7 +27,7 @@ extern "C" void app_main()
     else
     {
         ESP_LOGE("MAIN", "Wi-Fi connection failed!");
-    }*/
+    }
 
     ESP_LOGI(MAIN_TAG, "Firmware start. Checking traffic...");
     canClient.setup_twai();

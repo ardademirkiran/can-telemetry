@@ -3,6 +3,11 @@
 #include "OBDPriorityQueue.hpp"
 #include "CANClient.hpp"
 #include "CollectorStatus.hpp"
+#include "Snapshot.hpp"
+#include <vector>
+#include "CBORUtils.hpp"
+#include "SDCardInterface.hpp"
+
 class LiveDataCollector
 {
 public:
@@ -16,6 +21,7 @@ public:
 
 private:
     void mapPrinterTask(void *pv);
+    void sendBulkSnapshots(void *pv);
     void saveSnapshot();
     void collectData();
     CANClient *canClient_;
@@ -24,4 +30,13 @@ private:
     TaskHandle_t snapshotSaverHandle_;
     TaskHandle_t mapPrinterHandle_;
     TaskHandle_t dataSenderHandle_;
+    Snapshot snap;
+    CBORUtils cborUtils_;
+    SDCardInterface sdCardInterface_;
+    uint8_t SDCBORBuffer[8192];
+    uint8_t HTTPCBORBuffer[16384];
+
+    std::vector<Snapshot> snapshotList;
+
+    const char *deviceId = "123456789";
 };
