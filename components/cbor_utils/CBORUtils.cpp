@@ -1,4 +1,7 @@
 #include "CBORUtils.hpp"
+#include "esp_log.h"
+
+static constexpr const char *TAG = "CBOR";
 
 void CBORUtils::encodeSnapshot(const Snapshot &snap, CborEncoder *parent)
 {
@@ -27,13 +30,13 @@ void CBORUtils::encodeSnapshot(const Snapshot &snap, CborEncoder *parent)
 }
 
 void CBORUtils::convertCollectedDataIntoCBOR(const std::vector<Snapshot> &snapshotList,
-                                             uint8_t *buffer,
-                                             size_t bufferSize,
+                                             uint8_t *dataBuffer,
+                                             size_t dataBufferSize,
                                              size_t *outSize)
 {
     CborEncoder encoder, array;
 
-    cbor_encoder_init(&encoder, buffer, bufferSize, 0);
+    cbor_encoder_init(&encoder, dataBuffer, dataBufferSize, 0);
     cbor_encoder_create_array(&encoder, &array, CborIndefiniteLength);
 
     for (const auto &snap : snapshotList)
@@ -41,14 +44,16 @@ void CBORUtils::convertCollectedDataIntoCBOR(const std::vector<Snapshot> &snapsh
 
     cbor_encoder_close_container(&encoder, &array);
 
-    *outSize = cbor_encoder_get_buffer_size(&encoder, buffer);
+    *outSize = cbor_encoder_get_buffer_size(&encoder, dataBuffer);
+
+    ESP_LOGI(TAG, "CBOR size: %d bytes", outSize);
 }
 
-void CBORUtils::build_cbor_payload(const std::vector<Snapshot> &snapshotList, uint8_t *buffer, size_t bufferSize, size_t *outSize)
+void CBORUtils::build_cbor_payload(uint8_t *httpBuffer, uint8_t *dataBuffer, size_t httpBufferSize, size_t dataBufferSize, size_t *outSize)
 {
-    CborEncoder encoder, root, array;
+    CborEncoder encoder, root;
 
-    cbor_encoder_init(&encoder, buffer, bufferSize, 0);
+    cbor_encoder_init(&encoder, httpBuffer, httpBufferSize, 0);
 
     cbor_encoder_create_map(&encoder, &root, 2);
 
@@ -56,13 +61,10 @@ void CBORUtils::build_cbor_payload(const std::vector<Snapshot> &snapshotList, ui
     cbor_encode_text_stringz(&root, "123456789");
 
     cbor_encode_text_stringz(&root, "dataList");
-    cbor_encoder_create_array(&root, &array, CborIndefiniteLength);
-
-    for (const auto &snap : snapshotList)
-        encodeSnapshot(snap, &array);
-
-    cbor_encoder_close_container(&root, &array);
+    cbor_encode_byte_string(&root, dataBuffer, dataBufferSize);
     cbor_encoder_close_container(&encoder, &root);
 
-    *outSize = cbor_encoder_get_buffer_size(&encoder, buffer);
+    *outSize = cbor_encoder_get_buffer_size(&encoder, httpBuffer);
+
+    ESP_LOGI(TAG, "CBOR size: %d bytes", outSize);
 }

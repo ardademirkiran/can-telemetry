@@ -21,7 +21,7 @@ public:
 
 private:
     void mapPrinterTask(void *pv);
-    void sendBulkSnapshots(void *pv);
+    void saveSnapshots(void *pv);
     void saveSnapshot();
     void collectData();
     CANClient *canClient_;
@@ -33,10 +33,10 @@ private:
     Snapshot snap;
     CBORUtils cborUtils_;
     SDCardInterface sdCardInterface_;
-    uint8_t SDCBORBuffer[8192];
+    uint8_t dataCBORBuffer[8192];
     uint8_t HTTPCBORBuffer[16384];
 
-    std::vector<Snapshot> snapshotList;
+    std::vector<Snapshot> snapshotList_;
 
     const char *deviceId = "123456789";
 };

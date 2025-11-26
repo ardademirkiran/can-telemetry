@@ -22,29 +22,30 @@ void LiveDataCollector::mapPrinterTask(void *pv)
     while (status_ == CollectorStatus::RUNNING)
     {
         vTaskDelay(pdMS_TO_TICKS(1000));
-        ESP_LOGI("SNAPSHOT", "%s, snapshotList: Size: %d", snap.toJson().c_str(), snapshotList.size());
+        ESP_LOGI("SNAPSHOT", "%s, snapshotList: Size: %d", snap.toJson().c_str(), snapshotList_.size());
     }
     vTaskDelete(nullptr);
 }
 
-void LiveDataCollector::sendBulkSnapshots(void *pv)
+void LiveDataCollector::saveSnapshots(void *pv)
 {
     while (status_ == CollectorStatus::RUNNING)
     {
         vTaskDelay(pdMS_TO_TICKS(30000));
 
-        if (snapshotList.empty())
+        if (snapshotList_.empty())
         {
             continue;
         }
 
         // Allocate CBOR buffer
-        size_t cborSize = 0;
+        size_t httpCBORSize = 0;
+        size_t dataCborSize = 0;
+
+        cborUtils_.convertCollectedDataIntoCBOR(snapshotList_, dataCBORBuffer, sizeof(dataCBORBuffer), &dataCborSize);
 
         // Build CBOR data
-        cborUtils_.build_cbor_payload(snapshotList, HTTPCBORBuffer, sizeof(HTTPCBORBuffer), &cborSize);
-
-        ESP_LOGI("CBOR", "CBOR size: %d bytes", cborSize);
+        cborUtils_.build_cbor_payload(HTTPCBORBuffer, dataCBORBuffer, sizeof(HTTPCBORBuffer), dataCborSize, &httpCBORSize);
 
         // Send request
         esp_http_client_config_t config = {
@@ -56,25 +57,20 @@ void LiveDataCollector::sendBulkSnapshots(void *pv)
         esp_http_client_set_header(client, "Content-Type", "application/cbor");
         esp_http_client_set_post_field(client,
                                        (char *)HTTPCBORBuffer,
-                                       cborSize);
+                                       httpCBORSize);
 
         esp_err_t err = esp_http_client_perform(client);
 
         if (err == ESP_OK)
         {
-            ESP_LOGI("BULK", "Upload OK, HTTP %d",
-                     esp_http_client_get_status_code(client));
-            snapshotList.clear();
+            ESP_LOGI("BULK", "Upload OK, HTTP %d", esp_http_client_get_status_code(client));
+            snapshotList_.clear();
         }
         else
         {
-            ESP_LOGE("BULK", "Upload failed: %s",
-                     esp_err_to_name(err));
-            size_t sdCborLen = 0;
-
-            cborUtils_.convertCollectedDataIntoCBOR(snapshotList, SDCBORBuffer, sizeof(SDCBORBuffer), &sdCborLen);
-            sdCardInterface_.append_cbor_to_sd(SDCBORBuffer, sdCborLen);
-            snapshotList.clear();
+            ESP_LOGE("BULK", "Upload failed: %s", esp_err_to_name(err));
+            sdCardInterface_.append_cbor_to_sd(dataCBORBuffer, dataCborSize);
+            snapshotList_.clear();
         }
 
         esp_http_client_cleanup(client);
@@ -96,7 +92,7 @@ void LiveDataCollector::saveSnapshot()
         uint64_t elapsed_ms = (uint64_t)ticks * portTICK_PERIOD_MS;
         snap.setField("timestamp", elapsed_ms);
         ESP_LOGI(TAG, "Saving Snapshot.");
-        snapshotList.push_back(snap);
+        snapshotList_.push_back(snap);
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
@@ -166,7 +162,7 @@ void LiveDataCollector::kill()
     vTaskDelete(mapPrinterHandle_);
     vTaskDelete(dataSenderHandle_);
     requestQueue_.clear();
-    snapshotList.clear();
+    snapshotList_.clear();
     snap = Snapshot();
     status_ = CollectorStatus::KILLED;
 }
@@ -222,7 +218,7 @@ void LiveDataCollector::start()
                     &mapPrinterHandle_);
 
         xTaskCreate([](void *pv)
-                    { static_cast<LiveDataCollector *>(pv)->sendBulkSnapshots(pv); },
+                    { static_cast<LiveDataCollector *>(pv)->saveSnapshots(pv); },
                     "bulk_send",
                     4096,
                     this,

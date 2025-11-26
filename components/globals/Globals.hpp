@@ -5,4 +5,3 @@
 
 extern CANClient canClient;
 extern LiveDataCollector liveDataCollector;
-extern SDCardInterface sdCardInterface;

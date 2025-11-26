@@ -5,7 +5,7 @@
 #define SD_CLK 18
 #define SD_CS 15
 
-static constexpr const char *TAG = "SDCARD";
+static constexpr const char *TAG = "SDCARD_API";
 
 void SDCardInterface::append_cbor_to_sd(uint8_t *buffer, size_t len)
 {
@@ -13,11 +13,11 @@ void SDCardInterface::append_cbor_to_sd(uint8_t *buffer, size_t len)
 
     if (!f)
     {
-        ESP_LOGI(TAG, "File open fail.");
+        ESP_LOGI(TAG, "File open fail when reading.");
         return;
     }
 
-    fwrite(&len, 1, sizeof(len), f);
+    fwrite(&len, sizeof(len), 1, f);
     fwrite(buffer, 1, len, f);
     fclose(f);
 }
@@ -29,7 +29,7 @@ void SDCardInterface::read_cbor_from_sd(uint8_t *buffer, size_t bufferSize)
 
     if (!f)
     {
-        ESP_LOGI("TAG", "File open fail.");
+        ESP_LOGI(TAG, "File open fail when reading.");
         return;
     }
 
@@ -65,7 +65,7 @@ void SDCardInterface::init_sdcard()
 
     // ---- 1. Init SPI bus ----
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
-    host.max_freq_khz = 400; // SPI hızını 10KHz yap
+    host.max_freq_khz = 400;
     spi_bus_config_t bus_cfg = {
         .mosi_io_num = SD_MOSI,
         .miso_io_num = SD_MISO,
