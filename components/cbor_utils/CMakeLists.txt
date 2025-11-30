@@ -3,4 +3,4 @@ idf_component_register(
         CBORUtils.cpp
     INCLUDE_DIRS
         "."
-    REQUIRES livedata cbor )
+    REQUIRES cbor models)

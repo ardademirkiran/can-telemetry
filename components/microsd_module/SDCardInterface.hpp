@@ -10,7 +10,7 @@
 class SDCardInterface
 {
 public:
-    void init_sdcard();
-    void append_cbor_to_sd(uint8_t *buffer, size_t len);
-    void read_cbor_from_sd(uint8_t *buffer, size_t len);
+    void initSdcard();
+    void appendCborToSd(uint8_t *buffer, size_t len);
+    bool readCborFromSd(uint8_t *buffer, size_t len, size_t *outSize, long offset);
 };

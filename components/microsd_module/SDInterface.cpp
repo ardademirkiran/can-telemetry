@@ -7,7 +7,7 @@
 
 static constexpr const char *TAG = "SDCARD_API";
 
-void SDCardInterface::append_cbor_to_sd(uint8_t *buffer, size_t len)
+void SDCardInterface::appendCborToSd(uint8_t *buffer, size_t len)
 {
     FILE *f = fopen("/sdcard/logs.bin", "ab");
 
@@ -22,7 +22,7 @@ void SDCardInterface::append_cbor_to_sd(uint8_t *buffer, size_t len)
     fclose(f);
 }
 
-void SDCardInterface::read_cbor_from_sd(uint8_t *buffer, size_t bufferSize)
+bool SDCardInterface::readCborFromSd(uint8_t *buffer, size_t bufferSize, size_t *outSize, long offset)
 {
 
     FILE *f = fopen("/sdcard/logs.bin", "rb");
@@ -30,32 +30,47 @@ void SDCardInterface::read_cbor_from_sd(uint8_t *buffer, size_t bufferSize)
     if (!f)
     {
         ESP_LOGI(TAG, "File open fail when reading.");
-        return;
+        return false;
     }
-
-    size_t bufferCursor = 0;
-
-    for (int i = 0; i < 10; i++)
+    if (fseek(f, offset, SEEK_SET) != 0)
     {
-        uint32_t len = 0;
-        size_t readLen = fread(&len, 1, sizeof(len), f);
-        if (readLen != sizeof(len))
-        {
-            return;
-        }
-        if (bufferCursor + len <= bufferSize)
-        {
-            fread(buffer + bufferCursor, 1, len, f);
-            bufferCursor += len;
-        }
-        else
-        {
-            return;
-        }
+        fclose(f);
+        return false;
     }
+
+    uint32_t readLengthBuffer = 0;
+    size_t readLengthSize = fread(&readLengthBuffer, 1, sizeof(readLengthBuffer), f);
+
+    if (readLengthSize != sizeof(readLengthBuffer))
+    {
+        ESP_LOGI(TAG, "Length metadata can not be read properly from SD.");
+        fclose(f);
+        return false;
+    }
+
+    if (readLengthBuffer == 0)
+    {
+        ESP_LOGI(TAG, "The file is empty or corrupted.");
+        fclose(f);
+        return false;
+    }
+
+    size_t readDataSize = fread(buffer, 1, readLengthBuffer, f);
+
+    if (readDataSize != readLengthBuffer)
+    {
+        ESP_LOGI(TAG, "Data can not be read properly from SD.");
+        fclose(f);
+        return false;
+    }
+
+    *outSize = readLengthBuffer;
+
+    fclose(f);
+    return true;
 }
 
-void SDCardInterface::init_sdcard()
+void SDCardInterface::initSdcard()
 {
     vTaskDelay(pdMS_TO_TICKS(5000));
 

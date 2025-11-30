@@ -10,12 +10,9 @@
 #include <map>
 #include <string>
 #include "OBDResponse.hpp"
-#include "esp_http_client.h"
 #include "cbor.h"
 #include <string.h>
 #include "CBORUtils.hpp"
-
-static constexpr const char *TAG = "LIVE_DATA_COLLECTOR";
 
 void LiveDataCollector::mapPrinterTask(void *pv)
 {
@@ -38,48 +35,25 @@ void LiveDataCollector::saveSnapshots(void *pv)
             continue;
         }
 
-        // Allocate CBOR buffer
-        size_t httpCBORSize = 0;
         size_t dataCborSize = 0;
 
-        cborUtils_.convertCollectedDataIntoCBOR(snapshotList_, dataCBORBuffer, sizeof(dataCBORBuffer), &dataCborSize);
+        cborUtils_->convertCollectedDataIntoCBOR(snapshotList_, dataCBORBuffer, sizeof(dataCBORBuffer), &dataCborSize);
 
-        // Build CBOR data
-        cborUtils_.build_cbor_payload(HTTPCBORBuffer, dataCBORBuffer, sizeof(HTTPCBORBuffer), dataCborSize, &httpCBORSize);
+        bool httpSuccess = httpClient_->sendTelemetryData(dataCBORBuffer, dataCborSize);
 
-        // Send request
-        esp_http_client_config_t config = {
-            .url = "http://192.168.0.19:8080/telemetry/ingest",
-        };
-
-        esp_http_client_handle_t client = esp_http_client_init(&config);
-        esp_http_client_set_method(client, HTTP_METHOD_POST);
-        esp_http_client_set_header(client, "Content-Type", "application/cbor");
-        esp_http_client_set_post_field(client,
-                                       (char *)HTTPCBORBuffer,
-                                       httpCBORSize);
-
-        esp_err_t err = esp_http_client_perform(client);
-
-        if (err == ESP_OK)
+        if (!httpSuccess)
         {
-            ESP_LOGI("BULK", "Upload OK, HTTP %d", esp_http_client_get_status_code(client));
-            snapshotList_.clear();
+            sdCardInterface_->appendCborToSd(dataCBORBuffer, dataCborSize);
         }
-        else
-        {
-            ESP_LOGE("BULK", "Upload failed: %s", esp_err_to_name(err));
-            sdCardInterface_.append_cbor_to_sd(dataCBORBuffer, dataCborSize);
-            snapshotList_.clear();
-        }
-
-        esp_http_client_cleanup(client);
     }
 }
 
-LiveDataCollector::LiveDataCollector(CANClient *canClient)
+LiveDataCollector::LiveDataCollector(CANClient *canClient, SDCardInterface *sdCardInterface, CBORUtils *cborUtils, TelemetryHTTPClient *httpClient)
 {
     canClient_ = canClient;
+    sdCardInterface_ = sdCardInterface;
+    cborUtils_ = cborUtils;
+    httpClient_ = httpClient;
     status_ = CollectorStatus::READY;
     healthy_ = true;
 }
@@ -204,7 +178,6 @@ void LiveDataCollector::start()
     {
         status_ = CollectorStatus::RUNNING;
         healthy_ = true;
-        sdCardInterface_.init_sdcard();
 
         xTaskCreate([](void *pv)
                     { static_cast<LiveDataCollector *>(pv)->collectData(); }, "scheduler_task", 4096, this, 5, &collectorHandle_);

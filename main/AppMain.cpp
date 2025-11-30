@@ -30,7 +30,10 @@ extern "C" void app_main()
     }
 
     ESP_LOGI(MAIN_TAG, "Firmware start. Checking traffic...");
+    sdCardInterface.initSdcard();
     canClient.setup_twai();
+    httpClient.initClient();
+
     if (canClient.hasTraffic())
     {
         ESP_LOGI(MAIN_TAG, "Traffic detected, collector is started...");

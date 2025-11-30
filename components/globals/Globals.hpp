@@ -2,6 +2,10 @@
 #include "CANClient.hpp"
 #include "LiveDataCollector.hpp"
 #include "SDCardInterface.hpp"
+#include "http_client.hpp"
 
 extern CANClient canClient;
+extern SDCardInterface sdCardInterface;
+extern CBORUtils cborUtils;
 extern LiveDataCollector liveDataCollector;
+extern TelemetryHTTPClient httpClient;
