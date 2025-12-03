@@ -5,14 +5,14 @@
 bool TelemetryHTTPClient::sendTelemetryData(uint8_t *dataCborBuffer, size_t dataSize)
 {
 
-    if (!clientHandle_)
+    if (!clientHandle_ || !isInitialized_)
     {
         return false;
     }
 
     size_t httpCborSize = 0;
 
-    cborUtils_->build_cbor_payload(HTTPCBORBuffer_, dataCborBuffer, sizeof(HTTPCBORBuffer_), sizeof(dataSize), &httpCborSize);
+    cborUtils_->build_cbor_payload(HTTPCBORBuffer_, dataCborBuffer, sizeof(HTTPCBORBuffer_), dataSize, &httpCborSize);
 
     esp_http_client_set_post_field(clientHandle_,
                                    (char *)HTTPCBORBuffer_,
@@ -35,12 +35,13 @@ bool TelemetryHTTPClient::sendTelemetryData(uint8_t *dataCborBuffer, size_t data
 TelemetryHTTPClient::TelemetryHTTPClient(CBORUtils *cborUtils)
 {
     cborUtils_ = cborUtils;
+    isInitialized_ = false;
 }
 
 bool TelemetryHTTPClient::initClient()
 {
     esp_http_client_config_t config = {
-        .url = "http://192.178.0.19:8080/telemetry/ingest",
+        .url = "http://192.168.0.19:8080/telemetry/ingest",
         .timeout_ms = 5000,
         .buffer_size_tx = 2048,
         .keep_alive_enable = true,
@@ -49,12 +50,13 @@ bool TelemetryHTTPClient::initClient()
     clientHandle_ = esp_http_client_init(&config);
     esp_http_client_set_method(clientHandle_, HTTP_METHOD_POST);
     esp_http_client_set_header(clientHandle_, "Content-Type", "application/cbor");
+    isInitialized_ = true;
     return true;
 }
 
 bool TelemetryHTTPClient::cleanUp()
 {
-    if (!clientHandle_)
+    if (!clientHandle_ || !isInitialized_)
     {
         return false;
     }

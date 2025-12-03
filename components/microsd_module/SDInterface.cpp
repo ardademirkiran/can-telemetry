@@ -64,6 +64,7 @@ bool SDCardInterface::readCborFromSd(uint8_t *buffer, size_t bufferSize, size_t 
         return false;
     }
 
+    ESP_LOGI(TAG, "Successfully read %d bytes from memory.", readDataSize);
     *outSize = readLengthBuffer;
 
     fclose(f);

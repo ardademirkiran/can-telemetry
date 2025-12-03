@@ -15,4 +15,5 @@ private:
     uint8_t HTTPCBORBuffer_[16384];
     CBORUtils *cborUtils_;
     static constexpr const char *TAG = "HTTP_CLIENT";
+    bool isInitialized_;
 };

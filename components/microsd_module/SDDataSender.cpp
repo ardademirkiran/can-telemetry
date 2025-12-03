@@ -1,6 +1,8 @@
 #include "SDDataSender.hpp"
 
-void SDDataSender::sendDataFromSd(void *pv)
+static uint8_t dataBuffer[8192];
+
+void sendDataFromSd(void *pv)
 {
     size_t fileOffset = 0;
     size_t dataLen = 0;
@@ -15,5 +17,13 @@ void SDDataSender::sendDataFromSd(void *pv)
         {
             return;
         }
+        vTaskDelay(pdMS_TO_TICKS(10000));
     }
+    ESP_LOGI("SD_DATA_SENDER", "No data left in the SD. Exiting.");
+    vTaskDelete(nullptr);
+}
+
+void startDataSenderTask()
+{
+    xTaskCreate(sendDataFromSd, "DATA_SENDER_SD", 4096, nullptr, 3, nullptr);
 }

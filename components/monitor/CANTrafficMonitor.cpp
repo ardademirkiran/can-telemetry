@@ -5,11 +5,14 @@
 #include "OBDResponse.hpp"
 #include "LiveDataCollectorMonitor.hpp"
 #include "Globals.hpp"
+#include "SDDataSender.hpp"
 
 static constexpr const char *CAN_WATCHER_TAG = "CAN_WATCHER";
 
 void monitorCANTraffic(void *pv)
 {
+    startDataSenderTask();
+
     while (liveDataCollector.status_ == CollectorStatus::KILLED || liveDataCollector.status_ == CollectorStatus::READY)
     {
         ESP_LOGI(CAN_WATCHER_TAG, "CAN Watcher is now running.");
