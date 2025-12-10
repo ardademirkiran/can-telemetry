@@ -1,13 +1,12 @@
 #include "LiveDataCollectorMonitor.hpp"
-#include "Globals.hpp"
 #include "CANTrafficMonitor.hpp"
+#include "Globals.hpp"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+#include "Globals.hpp"
 
-static constexpr const char *COLLECTOR_MONITOR_TAG = "COLLECTOR_MONITOR";
-
-void monitorLiveDataCollector(void *pv)
+void CollectorMonitor::run()
 {
     while (liveDataCollector.status_ == CollectorStatus::RUNNING)
     {
@@ -37,7 +36,7 @@ void monitorLiveDataCollector(void *pv)
             {
                 ESP_LOGI(COLLECTOR_MONITOR_TAG, "CAN not detect traffic, killing the collector...");
                 liveDataCollector.kill();
-                startCANTrafficMonitor();
+                canTrafficMonitor.startTask();
                 vTaskDelete(nullptr);
             }
         }
@@ -46,7 +45,18 @@ void monitorLiveDataCollector(void *pv)
     vTaskDelete(nullptr);
 }
 
-void startLiveDataCollectorMonitor()
+void CollectorMonitor::taskEntry(void *pv)
 {
-    xTaskCreate(monitorLiveDataCollector, "LiveDataMonitor", 4096, nullptr, 3, nullptr);
+    CollectorMonitor *self = static_cast<CollectorMonitor *>(pv);
+    self->run();
+}
+
+void CollectorMonitor::startTask()
+{
+    xTaskCreate(CollectorMonitor::taskEntry,
+                "LiveDataMonitor",
+                4096,
+                this,
+                3,
+                nullptr);
 }

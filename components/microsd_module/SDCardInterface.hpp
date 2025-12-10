@@ -2,10 +2,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "esp_vfs_fat.h"
-#include "sdmmc_cmd.h"
-#include "esp_vfs_fat.h"
-#include "sdmmc_cmd.h"
 
 class SDCardInterface
 {

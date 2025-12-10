@@ -9,6 +9,11 @@
 #include "SDCardInterface.hpp"
 #include "http_client.hpp"
 
+class CANClient;
+class CBORUtils;
+class SDCardInterface;
+class TelemetryHTTPClient;
+
 class LiveDataCollector
 {
 public:
@@ -40,7 +45,7 @@ private:
     uint8_t HTTPCBORBuffer[16384];
 
     std::vector<Snapshot> snapshotList_;
-    static constexpr const char *TAG = "LIVE_DATA_COLLECTOR";
+    const char *TAG = "LIVE_DATA_COLLECTOR";
 
     const char *deviceId = "123456789";
 };

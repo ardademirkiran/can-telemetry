@@ -1,6 +1,6 @@
 #include "http_client.hpp"
-#include "esp_http_client.h"
 #include "esp_log.h"
+#include "CBORUtils.hpp"
 
 bool TelemetryHTTPClient::sendTelemetryData(uint8_t *dataCborBuffer, size_t dataSize)
 {

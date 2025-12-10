@@ -5,8 +5,7 @@
 #include "freertos/task.h"
 #include "LiveDataCollector.hpp"
 #include "Globals.hpp"
-#include "LiveDataCollectorMonitor.hpp"
-#include "CANTrafficMonitor.hpp"
+#include "Monitors.hpp"
 #include "WifiManager.hpp"
 #include "SDCardInterface.hpp"
 
@@ -38,11 +37,11 @@ extern "C" void app_main()
     {
         ESP_LOGI(MAIN_TAG, "Traffic detected, collector is started...");
         liveDataCollector.start();
-        startLiveDataCollectorMonitor();
+        collectorMonitor.startTask();
     }
     else
     {
         ESP_LOGI(MAIN_TAG, "No traffic, CAN Monitor is started...");
-        startCANTrafficMonitor();
+        canTrafficMonitor.startTask();
     }
 }

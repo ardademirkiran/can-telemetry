@@ -1,6 +1,7 @@
 #include "esp_http_client.h"
-#include "CBORUtils.hpp"
 #pragma once
+
+class CBORUtils;
 
 class TelemetryHTTPClient
 {

@@ -13,6 +13,9 @@
 #include "cbor.h"
 #include <string.h>
 #include "CBORUtils.hpp"
+#include "SDCardInterface.hpp"
+#include "http_client.hpp"
+#include "CANClient.hpp"
 
 void LiveDataCollector::mapPrinterTask(void *pv)
 {
@@ -45,6 +48,7 @@ void LiveDataCollector::saveSnapshots(void *pv)
         {
             sdCardInterface_->appendCborToSd(dataCBORBuffer, dataCborSize);
         }
+        snapshotList_.clear();
     }
 }
 

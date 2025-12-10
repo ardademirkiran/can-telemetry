@@ -1,29 +1,43 @@
 #include "SDDataSender.hpp"
+#include "Globals.hpp"
+#include "esp_log.h"
 
-static uint8_t dataBuffer[8192];
-
-void sendDataFromSd(void *pv)
+void SDDataSender::run()
 {
-    size_t fileOffset = 0;
     size_t dataLen = 0;
-    while (sdCardInterface.readCborFromSd(dataBuffer, sizeof(dataBuffer), &dataLen, fileOffset))
+    while (sdCardInterface.readCborFromSd(dataBuffer_, sizeof(dataBuffer_), &dataLen, fileOffset_) && isRunning)
     {
-        bool httpSuccess = httpClient.sendTelemetryData(dataBuffer, dataLen);
+        ESP_LOGI(SD_DATA_SENDER_TAG, "SD data sending started.");
+        bool httpSuccess = httpClient.sendTelemetryData(dataBuffer_, dataLen);
         if (httpSuccess)
         {
-            fileOffset += sizeof(uint32_t) + dataLen;
+            fileOffset_ += sizeof(uint32_t) + dataLen;
         }
         else
         {
+            ESP_LOGI(SD_DATA_SENDER_TAG, "An error occured while sending data. Exiting.");
             return;
         }
-        vTaskDelay(pdMS_TO_TICKS(10000));
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
-    ESP_LOGI("SD_DATA_SENDER", "No data left in the SD. Exiting.");
+    isRunning = false;
     vTaskDelete(nullptr);
 }
 
-void startDataSenderTask()
+void SDDataSender::taskEntry(void *pv)
 {
-    xTaskCreate(sendDataFromSd, "DATA_SENDER_SD", 4096, nullptr, 3, nullptr);
+    SDDataSender *self = static_cast<SDDataSender *>(pv);
+
+    self->run();
+}
+
+void SDDataSender::startTask()
+{
+    xTaskCreate(
+        SDDataSender::taskEntry,
+        "DATA_SENDER_SD",
+        4096,
+        this,
+        3,
+        nullptr);
 }

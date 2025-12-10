@@ -1,4 +1,6 @@
 #include "SDCardInterface.hpp"
+#include "esp_vfs_fat.h"
+#include "sdmmc_cmd.h"
 
 #define SD_MOSI 23
 #define SD_MISO 19
