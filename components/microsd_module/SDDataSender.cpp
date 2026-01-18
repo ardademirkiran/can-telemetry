@@ -16,7 +16,7 @@ void SDDataSender::run()
         else
         {
             ESP_LOGI(SD_DATA_SENDER_TAG, "An error occured while sending data. Exiting.");
-            return;
+            vTaskDelete(nullptr);
         }
         vTaskDelay(pdMS_TO_TICKS(5000));
     }

@@ -16,6 +16,7 @@
 #include "SDCardInterface.hpp"
 #include "http_client.hpp"
 #include "CANClient.hpp"
+#include <sys/time.h>
 
 void LiveDataCollector::mapPrinterTask(void *pv)
 {
@@ -66,10 +67,17 @@ void LiveDataCollector::saveSnapshot()
 {
     while (status_ == CollectorStatus::RUNNING)
     {
-        uint32_t ticks = xTaskGetTickCount();
-        uint64_t elapsed_ms = (uint64_t)ticks * portTICK_PERIOD_MS;
-        snap.setField("timestamp", elapsed_ms);
-        ESP_LOGI(TAG, "Saving Snapshot.");
+        struct timeval tv;
+        gettimeofday(&tv, nullptr);
+
+        uint64_t timestamp_ms =
+            (uint64_t)tv.tv_sec * 1000ULL +
+            (uint64_t)tv.tv_usec / 1000ULL;
+
+        snap.setField("timestamp", timestamp_ms);
+
+        ESP_LOGI(TAG, "Saving Snapshot. ts=%llu", timestamp_ms);
+
         snapshotList_.push_back(snap);
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
