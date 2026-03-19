@@ -87,5 +87,6 @@
     "typeinfo": "cpp",
     "variant": "cpp"
   },
-  "idf.flashType": "UART"
+  "idf.flashType": "UART",
+  "idf.currentSetup": "/home/ardademirkran/esp/v5.5.1/esp-idf"
 }

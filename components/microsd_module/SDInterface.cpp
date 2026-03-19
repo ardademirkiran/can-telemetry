@@ -2,10 +2,10 @@
 #include "esp_vfs_fat.h"
 #include "sdmmc_cmd.h"
 
-#define SD_MOSI 23
-#define SD_MISO 19
-#define SD_CLK 18
-#define SD_CS 15
+#define SD_MOSI 18
+#define SD_MISO 16
+#define SD_CLK 17
+#define SD_CS 19
 
 static constexpr const char *TAG = "SDCARD_API";
 

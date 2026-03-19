@@ -19,7 +19,7 @@ static constexpr const char *MAIN_TAG = "MAIN";
 extern "C" void app_main()
 {
 
-    rtc_initialize_gpio();
+    /*rtc_initialize_gpio();
     time_dto time_object;
     time_object.sec = 0;
     time_object.min = 47;
@@ -28,7 +28,7 @@ extern "C" void app_main()
     time_object.month = 1;
     time_object.year = 26;
     rtc_sync_clock_time(time_object);
-    rtc_sync_device_time();
+    rtc_sync_device_time();*/
 
     WiFiManager wifi("NEZIH_DEMIRKIRAN_2.4G", "enesyamanbaba");
     wifi.init();

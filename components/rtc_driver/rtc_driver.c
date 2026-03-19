@@ -23,9 +23,8 @@ static const char *TAG = "RTC";
 #define COM_WRITE_BURST          0xBE
 
 
-
-#define PIN_DAT GPIO_NUM_25
-#define PIN_CLK GPIO_NUM_26
+#define PIN_CLK GPIO_NUM_25
+#define PIN_DAT GPIO_NUM_26
 #define PIN_RST GPIO_NUM_27
 
 
