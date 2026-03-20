@@ -65,7 +65,7 @@ LiveDataCollector::LiveDataCollector(CANClient *canClient, SDCardInterface *sdCa
 
 void LiveDataCollector::saveSnapshot()
 {
-    while (status_ == CollectorStatus::RUNNING)
+    while (status_ == CollectorStatus::RUNNING && healthy_)
     {
         struct timeval tv;
         gettimeofday(&tv, nullptr);
