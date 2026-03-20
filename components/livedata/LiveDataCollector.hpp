@@ -30,7 +30,6 @@ private:
     void saveSnapshots(void *pv);
     void saveSnapshot();
     void collectData();
-    void sendDataFromSD();
     CANClient *canClient_;
     OBDPriorityQueue requestQueue_;
     TaskHandle_t collectorHandle_;

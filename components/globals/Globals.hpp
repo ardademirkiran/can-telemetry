@@ -5,9 +5,11 @@
 #include "http_client.hpp"
 #include "CANTrafficMonitor.hpp"
 #include "LiveDataCollectorMonitor.hpp"
+#include "nvs_interface.hpp"
 
 extern CANClient canClient;
 extern SDCardInterface sdCardInterface;
 extern CBORUtils cborUtils;
 extern LiveDataCollector liveDataCollector;
 extern TelemetryHTTPClient httpClient;
+extern NVSInterface nvsInterface;

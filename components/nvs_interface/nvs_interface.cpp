@@ -10,6 +10,8 @@ void NVSInterface::init_nvs_interface()
     }
 
     ESP_ERROR_CHECK(err);
+
+    ESP_LOGI(TAG, "NVS Interface is initialized.");
 }
 
 void NVSInterface::deinit_nvs_interface()
@@ -27,6 +29,8 @@ void NVSInterface::write_data(const std::string &key, const std::string &data)
     nvs_set_str(nvs_handle, key.c_str(), data.c_str());
     nvs_commit(nvs_handle);
     nvs_close(nvs_handle);
+
+    ESP_LOGI(TAG, "Data write - Key=%s Value=%s", key.c_str(), data.c_str());
 }
 
 void NVSInterface::write_data(const std::string &key, int32_t data)
@@ -35,15 +39,17 @@ void NVSInterface::write_data(const std::string &key, int32_t data)
     nvs_set_i32(nvs_handle, key.c_str(), data);
     nvs_commit(nvs_handle);
     nvs_close(nvs_handle);
+    ESP_LOGI(TAG, "Data write - Key=%s Value=%d", key.c_str(), data);
 }
 
 int32_t NVSInterface::read_int_data(const std::string &key)
 {
     esp_err_t err = nvs_open("storage", NVS_READONLY, &nvs_handle);
-    int32_t data = 0;
-    nvs_get_i32(nvs_handle, key.c_str(), &data);
+    int32_t data_read = 0;
+    nvs_get_i32(nvs_handle, key.c_str(), &data_read);
     nvs_close(nvs_handle);
-    return data;
+    ESP_LOGI(TAG, "Data Read - Key=%s Value=%d", key.c_str(), data_read);
+    return data_read;
 }
 
 std::string NVSInterface::read_string_data(const std::string &key)
@@ -59,5 +65,7 @@ std::string NVSInterface::read_string_data(const std::string &key)
         data_read.pop_back();
     }
     nvs_close(nvs_handle);
+    ESP_LOGI(TAG, "Data Read - Key=%s Value=%s", key.c_str(), data_read.c_str());
+
     return data_read;
 }

@@ -5,6 +5,7 @@
 void SDDataSender::run()
 {
     size_t dataLen = 0;
+    fileOffset_ = nvsInterface.read_int_data("can_data_file_offset");
     while (sdCardInterface.readCborFromSd(dataBuffer_, sizeof(dataBuffer_), &dataLen, fileOffset_) && isRunning)
     {
         ESP_LOGI(SD_DATA_SENDER_TAG, "SD data sending started.");
@@ -12,6 +13,7 @@ void SDDataSender::run()
         if (httpSuccess)
         {
             fileOffset_ += sizeof(uint32_t) + dataLen;
+            nvsInterface.write_data("can_data_file_offset", fileOffset_);
         }
         else
         {

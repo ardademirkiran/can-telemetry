@@ -18,8 +18,6 @@ public:
     void write_data(const std::string &key, int32_t data);
 
 private:
-    void write_int_data();
-    void write_string_data();
     const char *TAG = "NVS_INTF";
     nvs_handle_t nvs_handle;
 };

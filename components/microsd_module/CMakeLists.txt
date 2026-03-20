@@ -1,5 +1,5 @@
 idf_component_register(
-    SRCS "SDInterface.cpp" "SDDataSender.cpp"
+    SRCS "SDCardInterface.cpp" "SDDataSender.cpp"
     INCLUDE_DIRS "."
-    REQUIRES fatfs sdmmc driver http_client globals
+    REQUIRES fatfs sdmmc driver http_client globals nvs_interface
 )
