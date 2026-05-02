@@ -91,12 +91,12 @@ void LiveDataCollector::collectData()
         if (taskOpt)
         {
             OBDTask task = *taskOpt;
-            OBDResponse response = canClient_->sendCommand(task.request->pid(), 0x7E8);
+            OBDResponse response = canClient_->send_command(0x01, task.request->pid(), 0x7E0);
 
             if (response.getStatus() == OBDResponseStatus::OBD_OK)
             {
                 healthy_ = true;
-                double value = task.request->parseResponse(response.getData(), response.getLength());
+                double value = task.request->parseResponse(response.getData());
                 snap.setField(task.request->key(), value);
                 uint32_t now = xTaskGetTickCount();
                 task.priorityTick = now + pdMS_TO_TICKS(task.priorityMargin);

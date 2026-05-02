@@ -1,0 +1,15 @@
+enum class CanCommStatus
+{
+    SUCCESS,
+
+    OUT_OF_SEQUENCE,
+    RECEIVE_FAIL,
+    RECEIVE_TIMEOUT,
+    RECEIVE_INVALID_ARG,
+    TWAI_NOT_INSTALLED,
+    SEND_INVALID_ARG,
+    SEND_TIMEOUT,
+    SEND_TX_BUSY,
+    SEND_FAIL,
+
+};
