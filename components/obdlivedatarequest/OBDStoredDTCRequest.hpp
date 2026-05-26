@@ -7,7 +7,7 @@ class OBDStoredDTCRequest
 public:
     std::string key() const
     {
-        return "DTC";
+        return "dtc";
     }
     uint8_t pid() const
     {

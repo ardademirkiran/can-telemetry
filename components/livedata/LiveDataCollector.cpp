@@ -89,7 +89,7 @@ void LiveDataCollector::collect_DTC()
     ESP_LOGI(TAG, "-------------REQUESTING DTCS------------");
     vTaskDelay(pdMS_TO_TICKS(100));
     OBDStoredDTCRequest dtc_request{};
-    OBDResponse dtc_response = canClient_->send_command(0x03, 0x00, 0x7E0);
+    OBDResponse dtc_response = canClient_->send_command(0x03, dtc_request.pid(), 0x7E0);
     if (dtc_response.getStatus() == OBDResponseStatus::OBD_OK)
     {
         std::string dtc_str = dtc_request.parse_returned_dtc_list(dtc_response.getData());
