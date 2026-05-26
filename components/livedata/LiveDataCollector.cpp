@@ -65,7 +65,6 @@ LiveDataCollector::LiveDataCollector(CANClient *canClient, SDCardInterface *sdCa
 void LiveDataCollector::save_snapshot()
 {
 
-    SemaphoreHandle_t new_semaphore{};
     while (status_ == CollectorStatus::RUNNING && healthy_)
     {
         struct timeval tv;
