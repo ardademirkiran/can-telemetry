@@ -26,6 +26,9 @@ void CBORUtils::encodeSnapshot(const Snapshot &snap, CborEncoder *parent)
     cbor_encode_text_stringz(&itemMap, "engineLoad");
     cbor_encode_float(&itemMap, snap.engineLoad);
 
+    cbor_encode_text_stringz(&itemMap, "dtc");
+    cbor_encode_text_stringz(&itemMap, snap.dtc.c_str());
+
     cbor_encoder_close_container(parent, &itemMap);
 }
 

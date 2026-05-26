@@ -27,21 +27,25 @@ public:
 
 private:
     void mapPrinterTask(void *pv);
-    void saveSnapshots(void *pv);
-    void saveSnapshot();
-    void collectData();
+    void send_collected_snapshots(void *pv);
+    void save_snapshot();
+    void collect_data();
+    void enable_DTC_collect(void *pv);
+    void collect_DTC();
     CANClient *canClient_;
     OBDPriorityQueue requestQueue_;
     TaskHandle_t collectorHandle_;
     TaskHandle_t snapshotSaverHandle_;
     TaskHandle_t mapPrinterHandle_;
     TaskHandle_t dataSenderHandle_;
+    TaskHandle_t dtc_collect_enabler_handle_;
     Snapshot snap;
     CBORUtils *cborUtils_;
     SDCardInterface *sdCardInterface_;
     TelemetryHTTPClient *httpClient_;
     uint8_t dataCBORBuffer[8192];
     uint8_t HTTPCBORBuffer[16384];
+    bool is_dtc_enabled = false;
 
     std::vector<Snapshot> snapshotList_;
     const char *TAG = "LIVE_DATA_COLLECTOR";

@@ -7,6 +7,7 @@
 #include "OBDEngineLoadRequest.hpp"
 #include "OBDEngineCoolantTempRequest.hpp"
 #include "OBDMassAirFlowRequest.hpp"
+#include "OBDStoredDTCRequest.hpp"
 #include <map>
 #include <string>
 #include "OBDResponse.hpp"
@@ -28,28 +29,26 @@ void LiveDataCollector::mapPrinterTask(void *pv)
     vTaskDelete(nullptr);
 }
 
-void LiveDataCollector::saveSnapshots(void *pv)
+void LiveDataCollector::send_collected_snapshots(void *pv)
 {
     while (status_ == CollectorStatus::RUNNING)
     {
         vTaskDelay(pdMS_TO_TICKS(30000));
 
-        if (snapshotList_.empty())
+        if (!snapshotList_.empty())
         {
-            continue;
+            size_t dataCborSize = 0;
+
+            cborUtils_->convertCollectedDataIntoCBOR(snapshotList_, dataCBORBuffer, sizeof(dataCBORBuffer), &dataCborSize);
+
+            bool httpSuccess = httpClient_->sendTelemetryData(dataCBORBuffer, dataCborSize);
+
+            if (!httpSuccess)
+            {
+                sdCardInterface_->appendCborToSd(dataCBORBuffer, dataCborSize);
+            }
+            snapshotList_.clear();
         }
-
-        size_t dataCborSize = 0;
-
-        cborUtils_->convertCollectedDataIntoCBOR(snapshotList_, dataCBORBuffer, sizeof(dataCBORBuffer), &dataCborSize);
-
-        bool httpSuccess = httpClient_->sendTelemetryData(dataCBORBuffer, dataCborSize);
-
-        if (!httpSuccess)
-        {
-            sdCardInterface_->appendCborToSd(dataCBORBuffer, dataCborSize);
-        }
-        snapshotList_.clear();
     }
 }
 
@@ -63,8 +62,10 @@ LiveDataCollector::LiveDataCollector(CANClient *canClient, SDCardInterface *sdCa
     healthy_ = true;
 }
 
-void LiveDataCollector::saveSnapshot()
+void LiveDataCollector::save_snapshot()
 {
+
+    SemaphoreHandle_t new_semaphore{};
     while (status_ == CollectorStatus::RUNNING && healthy_)
     {
         struct timeval tv;
@@ -83,7 +84,22 @@ void LiveDataCollector::saveSnapshot()
     }
 }
 
-void LiveDataCollector::collectData()
+void LiveDataCollector::collect_DTC()
+{
+    ESP_LOGI(TAG, "-------------REQUESTING DTCS------------");
+    vTaskDelay(pdMS_TO_TICKS(100));
+    OBDStoredDTCRequest dtc_request{};
+    OBDResponse dtc_response = canClient_->send_command(0x03, 0x00, 0x7E0);
+    if (dtc_response.getStatus() == OBDResponseStatus::OBD_OK)
+    {
+        std::string dtc_str = dtc_request.parse_returned_dtc_list(dtc_response.getData());
+        ESP_LOGI(TAG, "Stored DTC Response: %s", dtc_str.c_str());
+        snap.dtc = dtc_str;
+    }
+    is_dtc_enabled = false;
+}
+
+void LiveDataCollector::collect_data()
 {
     while (status_ == CollectorStatus::RUNNING)
     {
@@ -98,6 +114,10 @@ void LiveDataCollector::collectData()
                 healthy_ = true;
                 double value = task.request->parseResponse(response.getData());
                 snap.setField(task.request->key(), value);
+                if (is_dtc_enabled)
+                {
+                    collect_DTC();
+                }
                 uint32_t now = xTaskGetTickCount();
                 task.priorityTick = now + pdMS_TO_TICKS(task.priorityMargin);
             }
@@ -126,6 +146,8 @@ void LiveDataCollector::stop()
     ESP_LOGI(TAG, "Suspending dataSenderHandle_ = %p", dataSenderHandle_);
     vTaskSuspend(dataSenderHandle_);
 
+    vTaskSuspend(dtc_collect_enabler_handle_);
+
     status_ = CollectorStatus::SUSPENDED;
 }
 
@@ -138,6 +160,7 @@ void LiveDataCollector::resume()
     vTaskResume(snapshotSaverHandle_);
     vTaskResume(mapPrinterHandle_);
     vTaskResume(dataSenderHandle_);
+    vTaskResume(dtc_collect_enabler_handle_);
 }
 
 void LiveDataCollector::kill()
@@ -147,10 +170,23 @@ void LiveDataCollector::kill()
     vTaskDelete(snapshotSaverHandle_);
     vTaskDelete(mapPrinterHandle_);
     vTaskDelete(dataSenderHandle_);
+    vTaskDelete(dtc_collect_enabler_handle_);
     requestQueue_.clear();
     snapshotList_.clear();
     snap = Snapshot();
     status_ = CollectorStatus::KILLED;
+}
+
+void LiveDataCollector::enable_DTC_collect(void *pv)
+{
+
+    while (status_ == CollectorStatus::RUNNING)
+    {
+
+        is_dtc_enabled = true;
+        vTaskDelay(pdMS_TO_TICKS(30000));
+    }
+    vTaskDelete(nullptr);
 }
 
 void LiveDataCollector::start()
@@ -192,7 +228,7 @@ void LiveDataCollector::start()
         healthy_ = true;
 
         xTaskCreate([](void *pv)
-                    { static_cast<LiveDataCollector *>(pv)->collectData(); }, "scheduler_task", 4096, this, 5, &collectorHandle_);
+                    { static_cast<LiveDataCollector *>(pv)->collect_data(); }, "scheduler_task", 4096, this, 5, &collectorHandle_);
 
         xTaskCreate([](void *pv)
                     { static_cast<LiveDataCollector *>(pv)->mapPrinterTask(pv); },
@@ -203,7 +239,7 @@ void LiveDataCollector::start()
                     &mapPrinterHandle_);
 
         xTaskCreate([](void *pv)
-                    { static_cast<LiveDataCollector *>(pv)->saveSnapshots(pv); },
+                    { static_cast<LiveDataCollector *>(pv)->send_collected_snapshots(pv); },
                     "bulk_send",
                     4096,
                     this,
@@ -211,7 +247,11 @@ void LiveDataCollector::start()
                     &dataSenderHandle_);
 
         xTaskCreate([](void *pv)
-                    { static_cast<LiveDataCollector *>(pv)->saveSnapshot(); }, "save_snapshot_task", 4096, this, 4, &snapshotSaverHandle_);
+                    { static_cast<LiveDataCollector *>(pv)->save_snapshot(); }, "save_snapshot_task", 4096, this, 4, &snapshotSaverHandle_);
+
+        xTaskCreate([](void *pv)
+                    { static_cast<LiveDataCollector *>(pv)->enable_DTC_collect(pv); }, "enable_dtc_request", 4096, this, 4,
+                    &dtc_collect_enabler_handle_);
         ESP_LOGI(TAG, "LiveDataGatherer started");
     }
 }

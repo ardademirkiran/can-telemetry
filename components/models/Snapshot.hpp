@@ -13,6 +13,7 @@ public:
     double engineCoolantTemp;
     double maf;
     double engineLoad;
+    std::string dtc;
 
     Snapshot()
     {
@@ -22,6 +23,7 @@ public:
         engineCoolantTemp = 0;
         maf = 0;
         engineLoad = 0;
+        dtc = "";
     }
 
     void setField(const std::string &key, double value)
@@ -61,7 +63,8 @@ public:
            << "\"speed\":" << speed << ","
            << "\"engineCoolantTemp\":" << engineCoolantTemp << ","
            << "\"maf\":" << maf << ","
-           << "\"engineLoad\":" << engineLoad
+           << "\"engineLoad\":" << engineLoad << ","
+           << "\"dtc\":" << dtc
            << "}";
         return ss.str();
     }
