@@ -277,7 +277,7 @@ CanCommStatus CANClient::receive_frame(uint32_t ecu_id, twai_message_t &rx_msg, 
         switch (receive_status)
         {
         case ESP_OK:
-            if (rx_msg.identifier == ecu_id)
+            if (rx_msg.identifier == ecu_id && (rx_msg.data[2] == pid || rx_msg.data[2] == 0xFF))
             {
                 log_twai_message(rx_msg);
                 return CanCommStatus::SUCCESS;

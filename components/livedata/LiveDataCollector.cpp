@@ -39,46 +39,51 @@ void LiveDataCollector::send_collected_snapshots(void *pv)
         {
             size_t dataCborSize = 0;
 
-            cborUtils_->convertCollectedDataIntoCBOR(snapshotList_, dataCBORBuffer, sizeof(dataCBORBuffer), &dataCborSize);
+            cborUtils_.convertCollectedDataIntoCBOR(snapshotList_, dataCBORBuffer, sizeof(dataCBORBuffer), &dataCborSize);
 
-            bool httpSuccess = httpClient_->sendTelemetryData(dataCBORBuffer, dataCborSize);
+            bool httpSuccess = httpClient_.sendTelemetryData(dataCBORBuffer, dataCborSize);
 
             if (!httpSuccess)
             {
-                sdCardInterface_->appendCborToSd(dataCBORBuffer, dataCborSize);
+                sdCardInterface_.appendCborToSd(dataCBORBuffer, dataCborSize);
             }
             snapshotList_.clear();
         }
     }
 }
 
-LiveDataCollector::LiveDataCollector(CANClient *canClient, SDCardInterface *sdCardInterface, CBORUtils *cborUtils, TelemetryHTTPClient *httpClient)
-{
-    canClient_ = canClient;
-    sdCardInterface_ = sdCardInterface;
-    cborUtils_ = cborUtils;
-    httpClient_ = httpClient;
-    status_ = CollectorStatus::READY;
-    healthy_ = true;
-}
+LiveDataCollector::LiveDataCollector(
+    CANClient &canClient,
+    SDCardInterface &sdCardInterface,
+    CBORUtils &cborUtils,
+    TelemetryHTTPClient &httpClient)
+    : healthy_(true),
+      status_(CollectorStatus::READY),
+      canClient_(canClient),
+      cborUtils_(cborUtils),
+      sdCardInterface_(sdCardInterface),
+      httpClient_(httpClient) {}
 
 void LiveDataCollector::save_snapshot()
 {
 
-    while (status_ == CollectorStatus::RUNNING && healthy_)
+    while (status_ == CollectorStatus::RUNNING)
     {
-        struct timeval tv;
-        gettimeofday(&tv, nullptr);
+        if (healthy_)
+        {
+            struct timeval tv;
+            gettimeofday(&tv, nullptr);
 
-        uint64_t timestamp_ms =
-            (uint64_t)tv.tv_sec * 1000ULL +
-            (uint64_t)tv.tv_usec / 1000ULL;
+            uint64_t timestamp_ms =
+                (uint64_t)tv.tv_sec * 1000ULL +
+                (uint64_t)tv.tv_usec / 1000ULL;
 
-        snap.setField("timestamp", timestamp_ms);
+            snap.setField("timestamp", timestamp_ms);
 
-        ESP_LOGI(TAG, "Saving Snapshot. ts=%llu", timestamp_ms);
+            ESP_LOGI(TAG, "Saving Snapshot. ts=%llu", timestamp_ms);
 
-        snapshotList_.push_back(snap);
+            snapshotList_.push_back(snap);
+        }
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
@@ -88,7 +93,7 @@ void LiveDataCollector::collect_DTC()
     ESP_LOGI(TAG, "-------------REQUESTING DTCS------------");
     vTaskDelay(pdMS_TO_TICKS(100));
     OBDStoredDTCRequest dtc_request{};
-    OBDResponse dtc_response = canClient_->send_command(0x03, dtc_request.pid(), 0x7E0);
+    OBDResponse dtc_response = canClient_.send_command(0x03, dtc_request.pid(), 0x7E0);
     if (dtc_response.getStatus() == OBDResponseStatus::OBD_OK)
     {
         std::string dtc_str = dtc_request.parse_returned_dtc_list(dtc_response.getData());
@@ -106,7 +111,7 @@ void LiveDataCollector::collect_data()
         if (taskOpt)
         {
             OBDTask task = *taskOpt;
-            OBDResponse response = canClient_->send_command(0x01, task.request->pid(), 0x7E0);
+            OBDResponse response = canClient_.send_command(0x01, task.request->pid(), 0x7E0);
 
             if (response.getStatus() == OBDResponseStatus::OBD_OK)
             {
@@ -114,9 +119,7 @@ void LiveDataCollector::collect_data()
                 double value = task.request->parseResponse(response.getData());
                 snap.setField(task.request->key(), value);
                 if (is_dtc_enabled)
-                {
                     collect_DTC();
-                }
                 uint32_t now = xTaskGetTickCount();
                 task.priorityTick = now + pdMS_TO_TICKS(task.priorityMargin);
             }
@@ -133,19 +136,21 @@ void LiveDataCollector::collect_data()
 
 void LiveDataCollector::stop()
 {
-    ESP_LOGI(TAG, "Stopping...");
-
-    ESP_LOGI(TAG, "Suspending collectorHandle_ = %p", collectorHandle_);
+    ESP_LOGI(TAG, "Suspending data collector tasks...");
     vTaskSuspend(collectorHandle_);
+    ESP_LOGI(TAG, "Suspending data collector tasks...");
 
-    ESP_LOGI(TAG, "Suspending snapshotSaverHandle_ = %p", snapshotSaverHandle_);
     vTaskSuspend(snapshotSaverHandle_);
-    vTaskSuspend(mapPrinterHandle_);
+    ESP_LOGI(TAG, "Suspending data collector tasks...");
 
-    ESP_LOGI(TAG, "Suspending dataSenderHandle_ = %p", dataSenderHandle_);
+    vTaskSuspend(mapPrinterHandle_);
+    ESP_LOGI(TAG, "Suspending data collector tasks...");
+
     vTaskSuspend(dataSenderHandle_);
+    ESP_LOGI(TAG, "Suspending data collector tasks...");
 
     vTaskSuspend(dtc_collect_enabler_handle_);
+    ESP_LOGI(TAG, "Suspending data collector tasks...");
 
     status_ = CollectorStatus::SUSPENDED;
 }
