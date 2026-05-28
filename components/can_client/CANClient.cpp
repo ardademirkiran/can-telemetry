@@ -135,7 +135,7 @@ CanCommStatus CANClient::handle_consecutive_frames(std::vector<uint8_t> &payload
 
         twai_message_t rx_msg;
 
-        CanCommStatus receive_status = receive_frame(0x7E8, rx_msg, 0xFF);
+        CanCommStatus receive_status = receive_frame(0x7E8, rx_msg, 0x00);
 
         if (receive_status == CanCommStatus::SUCCESS)
         {
@@ -277,7 +277,7 @@ CanCommStatus CANClient::receive_frame(uint32_t ecu_id, twai_message_t &rx_msg, 
         switch (receive_status)
         {
         case ESP_OK:
-            if (rx_msg.identifier == ecu_id && (rx_msg.data[2] == pid || rx_msg.data[2] == 0xFF))
+            if (rx_msg.identifier == ecu_id && (rx_msg.data[2] == pid || pid == 0x00))
             {
                 log_twai_message(rx_msg);
                 return CanCommStatus::SUCCESS;

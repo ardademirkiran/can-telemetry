@@ -100,7 +100,7 @@ void LiveDataCollector::collect_DTC()
         ESP_LOGI(TAG, "Stored DTC Response: %s", dtc_str.c_str());
         snap.dtc = dtc_str;
     }
-    is_dtc_enabled = false;
+    is_dtc_enabled.store(false);
 }
 
 void LiveDataCollector::collect_data()
@@ -118,7 +118,7 @@ void LiveDataCollector::collect_data()
                 healthy_ = true;
                 double value = task.request->parseResponse(response.getData());
                 snap.setField(task.request->key(), value);
-                if (is_dtc_enabled)
+                if (is_dtc_enabled.load())
                     collect_DTC();
                 uint32_t now = xTaskGetTickCount();
                 task.priorityTick = now + pdMS_TO_TICKS(task.priorityMargin);
@@ -187,7 +187,7 @@ void LiveDataCollector::enable_DTC_collect(void *pv)
     while (status_ == CollectorStatus::RUNNING)
     {
 
-        is_dtc_enabled = true;
+        is_dtc_enabled.store(true);
         vTaskDelay(pdMS_TO_TICKS(30000));
     }
     vTaskDelete(nullptr);

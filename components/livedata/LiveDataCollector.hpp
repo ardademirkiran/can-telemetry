@@ -50,7 +50,7 @@ private:
 
     uint8_t dataCBORBuffer[8192];
     uint8_t HTTPCBORBuffer[16384];
-    std::atomic<bool> is_dtc_enabled = false;
+    std::atomic<bool> is_dtc_enabled{false};
 
     std::vector<Snapshot> snapshotList_;
 
